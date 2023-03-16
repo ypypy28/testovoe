@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 
 #define WINDOW_WIDTH 600
@@ -6,11 +7,13 @@
 
 
 typedef enum { false, true } bool;
+typedef enum { horizontal, vertical }  direction;
 
 typedef struct app {
     SDL_Renderer * renderer;
     SDL_Window * window;
     SDL_Event * event;
+    TTF_Font * font;
     bool is_running;
 } App;
 
@@ -19,6 +22,7 @@ static App app;
 void init_app();
 void deinit_app(int error);
 void process_event();
+void draw_text(const char *, direction);
 
 int main(int argc, char * argv[]) {
 
@@ -26,17 +30,10 @@ int main(int argc, char * argv[]) {
     
     SDL_Surface * screen = SDL_GetWindowSurface(app.window);
     
-    int i = 0;
     while (app.is_running) {
         process_event();
         SDL_Delay(16);
-        SDL_SetRenderDrawColor(app.renderer, i, 0, i, 255);
-        SDL_RenderClear(app.renderer);
-        SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, 255);
-        SDL_RenderDrawLine(app.renderer, i+10, i, 100, 200);
-
-        SDL_RenderPresent(app.renderer);
-        i = (i+1)%255;
+        draw_text("Hello, мир!", horizontal);
     }
 
             
@@ -88,9 +85,20 @@ void init_app() {
 
     app.event = event;
     app.is_running = true;
+    
+    if (TTF_Init() < 0) {
+        printf("Can not initialize SDL_TTF ( %s )", TTF_GetError());
+        deinit_app(1);
+    }
+
+    app.font = TTF_OpenFont("resources/DejaVuSans.ttf", 28);
 }
 
 void deinit_app(int error) {
+
+    TTF_CloseFont(app.font);
+    TTF_Quit();
+
     if (app.event != NULL) {
         free(app.event);
     }
@@ -102,6 +110,7 @@ void deinit_app(int error) {
     if (app.window != NULL) {
         SDL_DestroyWindow(app.window);
     }
+
     SDL_Quit();
     exit(error);
 }
@@ -116,4 +125,28 @@ void process_event() {
                 break;
         }
     }
+}
+
+
+void draw_text(const char* text, direction d) {
+    SDL_Color color_fg = { 200, 228, 142 };
+    SDL_Color color_bg = { 0, 0, 0 };
+
+    int width, height;
+    TTF_SizeUTF8(app.font, text, &width, &height);
+
+    SDL_Rect text_rect = {0, 0, width, height};
+    SDL_Surface * surface = TTF_RenderUTF8_Shaded(
+            app.font,
+            text,
+            color_fg,
+            color_bg
+            );
+    SDL_Texture * texture = SDL_CreateTextureFromSurface(app.renderer, surface);
+
+    SDL_RenderCopy(app.renderer, texture, &text_rect, &text_rect);
+    SDL_RenderPresent(app.renderer);
+
+    SDL_DestroyTexture(texture);
+    SDL_FreeSurface(surface);
 }
