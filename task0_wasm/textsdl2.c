@@ -10,7 +10,7 @@
 
 
 typedef enum { false, true } bool;
-typedef enum { horizontal, vertical }  direction;
+typedef enum { horizontal, vertical } orientation;
 
 typedef struct app {
     SDL_Renderer * renderer;
@@ -24,7 +24,7 @@ static App app;
 
 struct TextArgs {
     char * msg;
-    direction d;
+    orientation d;
 };
 
 void init_app();
