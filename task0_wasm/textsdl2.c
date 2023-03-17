@@ -1,5 +1,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include <stdio.h>
 
 #define WINDOW_WIDTH 600
@@ -19,23 +22,35 @@ typedef struct app {
 
 static App app;
 
+struct TextArgs {
+    char * msg;
+    direction d;
+};
+
 void init_app();
 void deinit_app(int error);
 void process_event();
-void draw_text(const char *, direction);
+void draw_text(struct TextArgs*);
+void draw_text_horizontal(const char *, SDL_Color , SDL_Color);
+void draw_text_vertical(const char *, SDL_Color, SDL_Color);
 
 int main(int argc, char * argv[]) {
 
     init_app();
     
     SDL_Surface * screen = SDL_GetWindowSurface(app.window);
-    
+        
+#ifdef __EMSCRIPTEN__
+    struct TextArgs args = {"Hello", horizontal};
+    emscripten_set_main_loop_arg((em_arg_callback_func) draw_text, &args, 0, 1);
+#else
+    struct TextArgs args = {"Hello, мир", horizontal};
     while (app.is_running) {
         process_event();
         SDL_Delay(16);
-        draw_text("Hello, мир!", horizontal);
+        draw_text(&args);
     }
-
+#endif
             
     if (screen != NULL) {
         SDL_FreeSurface(screen);
@@ -128,10 +143,21 @@ void process_event() {
 }
 
 
-void draw_text(const char* text, direction d) {
+void draw_text(struct TextArgs * args) {
     SDL_Color color_fg = { 200, 228, 142 };
     SDL_Color color_bg = { 0, 0, 0 };
 
+    switch (args->d) {
+        case horizontal:
+            draw_text_horizontal(args->msg, color_fg, color_bg);
+            break;
+        case vertical:
+            draw_text_vertical(args->msg, color_fg, color_bg);
+            break;
+    }
+}
+
+void draw_text_horizontal(const char * text, SDL_Color color_fg, SDL_Color color_bg) {
     int width, height;
     TTF_SizeUTF8(app.font, text, &width, &height);
 
@@ -149,4 +175,8 @@ void draw_text(const char* text, direction d) {
 
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(surface);
+}
+
+// TODO implement function
+void draw_text_vertical(const char * text, SDL_Color color_fg, SDL_Color color_bg) {
 }
