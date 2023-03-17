@@ -12,25 +12,31 @@
 typedef enum { false, true } bool;
 typedef enum { horizontal, vertical } orientation;
 
+typedef struct  {
+    char * msg;
+    orientation d;
+    int rect_width;
+    int rect_height;
+    SDL_Texture * texture;
+} TextArgs;
+
 typedef struct app {
     SDL_Renderer * renderer;
     SDL_Window * window;
     SDL_Event * event;
     TTF_Font * font;
+    TextArgs * text;
     bool is_running;
 } App;
 
 static App app;
 
-struct TextArgs {
-    char * msg;
-    orientation d;
-};
 
 void init_app();
 void deinit_app(int error);
 void process_event();
-void draw_text(struct TextArgs*);
+void change_text_to(char *, char*);
+void draw_text();
 void draw_text_horizontal(const char *, SDL_Color , SDL_Color);
 void draw_text_vertical(const char *, SDL_Color, SDL_Color);
 
@@ -41,15 +47,15 @@ int main(int argc, char * argv[]) {
     SDL_Surface * screen = SDL_GetWindowSurface(app.window);
         
 #ifdef __EMSCRIPTEN__
-    struct TextArgs args = {"Hello", horizontal};
-    emscripten_set_main_loop_arg((em_arg_callback_func) draw_text, &args, 0, 1);
+    emscripten_set_main_loop(process_event, 0, 1);
 #else
-    struct TextArgs args = {"Hello, мир", horizontal};
     while (app.is_running) {
         process_event();
         SDL_Delay(16);
-        draw_text(&args);
     }
+    change_text_to("BYE!!!", "h");
+    draw_text();
+    SDL_Delay(1000);
 #endif
             
     if (screen != NULL) {
@@ -107,9 +113,18 @@ void init_app() {
     }
 
     app.font = TTF_OpenFont("resources/DejaVuSans.ttf", 28);
+
+    app.text = malloc(sizeof(TextArgs));
+    app.text->rect_width = 0;
+    app.text->rect_height = 0;
+    app.text->texture = NULL;
+    change_text_to("Hello", "h");
 }
 
 void deinit_app(int error) {
+
+    if (app.text->texture != NULL) SDL_DestroyTexture(app.text->texture);
+    if (app.text != NULL) free(app.text);
 
     TTF_CloseFont(app.font);
     TTF_Quit();
@@ -140,23 +155,48 @@ void process_event() {
                 break;
         }
     }
+    draw_text();
 }
 
+void change_text_to(char * msg, char * o) {
+    orientation orient = *o == 'v' ? vertical : horizontal;
+    app.text->msg = msg;
+    app.text->d = orient;
 
-void draw_text(struct TextArgs * args) {
+    int width, height;
+    TTF_SizeUTF8(app.font, msg, &width, &height);
+    
+    app.text->rect_width = width;
+    app.text->rect_height = height;
+
+    SDL_Rect text_rect = {0, 0, width, height};
+
     SDL_Color color_fg = { 200, 228, 142 };
     SDL_Color color_bg = { 0, 0, 0 };
 
-    switch (args->d) {
-        case horizontal:
-            draw_text_horizontal(args->msg, color_fg, color_bg);
-            break;
-        case vertical:
-            draw_text_vertical(args->msg, color_fg, color_bg);
-            break;
+    SDL_Surface * surface = TTF_RenderUTF8_Shaded(
+            app.font,
+            msg,
+            color_fg,
+            color_bg
+            );
+    SDL_Texture * texture = SDL_CreateTextureFromSurface(app.renderer, surface);
+    SDL_FreeSurface(surface);
+
+    if (app.text->texture != NULL) {
+        SDL_DestroyTexture(app.text->texture);
     }
+    app.text->texture = texture;
+
 }
 
+void draw_text() {
+    SDL_Rect rect = {0, 0, app.text->rect_width, app.text->rect_height};
+    SDL_RenderCopy(app.renderer, app.text->texture, &rect, &rect);
+    SDL_RenderPresent(app.renderer);
+}
+
+// TODO change to make text_horizontal
 void draw_text_horizontal(const char * text, SDL_Color color_fg, SDL_Color color_bg) {
     int width, height;
     TTF_SizeUTF8(app.font, text, &width, &height);
@@ -170,11 +210,10 @@ void draw_text_horizontal(const char * text, SDL_Color color_fg, SDL_Color color
             );
     SDL_Texture * texture = SDL_CreateTextureFromSurface(app.renderer, surface);
 
+    SDL_FreeSurface(surface);
+    /* SDL_RenderCopy(app.renderer, texture, &text_rect, &text_rect); */
     SDL_RenderCopy(app.renderer, texture, &text_rect, &text_rect);
     SDL_RenderPresent(app.renderer);
-
-    SDL_DestroyTexture(texture);
-    SDL_FreeSurface(surface);
 }
 
 // TODO implement function
