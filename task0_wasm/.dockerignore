@@ -1,0 +1,9 @@
+.dockerignore
+.gitignore
+
+.git
+build/
+Makefile
+CMakeCache
+CMakeFiles/
+cmake_install*
