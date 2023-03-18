@@ -5,7 +5,7 @@ RUN emsdk install 3.1.34
 WORKDIR /src
 RUN mkdir -p build/public
 COPY . ./
-RUN emcc textsdl2.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources -o build/public/task0.html
+RUN emcc textsdl2.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources -o build/public/draw.html
 
 FROM python:3.11-alpine
 WORKDIR /var/www

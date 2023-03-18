@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(task0)
+project(draw)
 
 # build out of source in the build directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build/bin)
