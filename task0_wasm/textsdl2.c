@@ -40,13 +40,31 @@ void draw_text();
 void draw_text_horizontal(const char *, SDL_Color , SDL_Color);
 void draw_text_vertical(const char *, SDL_Color, SDL_Color);
 
-int main(int argc, char * argv[]) {
+#ifdef __EMSCRIPTEN__
+char * get_param(char * param) {
+    
+    return (char *)EM_ASM_PTR({
+            const allParams = new URLSearchParams(window.location.search);
+            let p = UTF8ToString($0);
+            let jsString = allParams.get(p);
+            if (jsString == null) {
+                jsString = p == "o" ?  "h" : "";
+            }
+            const lengthBytes = lengthBytesUTF8(jsString) + 1;
+            let stringOnWasmHeap = _malloc(lengthBytes);
+            stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+            return stringOnWasmHeap;
+            }, param);
+}
+#endif
 
+int main(int argc, char * argv[]) {
     init_app();
     
     SDL_Surface * screen = SDL_GetWindowSurface(app.window);
         
 #ifdef __EMSCRIPTEN__
+    change_text_to(get_param("t"), get_param("o"));
     emscripten_set_main_loop(process_event, 0, 1);
 #else
     while (app.is_running) {
