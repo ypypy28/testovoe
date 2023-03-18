@@ -20,7 +20,7 @@ add_executable(${PROJECT_NAME} textsdl2.c)
 
 if(EMSCRIPTEN)
     set_target_properties(${PROJECT_NAME}
-        PROPERTIES LINK_FLAGS "-s USE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources/DejaVuSans.ttf")
+        PROPERTIES LINK_FLAGS "-sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources")
 else()
     target_link_libraries(${PROJECT_NAME}  ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
 endif()
