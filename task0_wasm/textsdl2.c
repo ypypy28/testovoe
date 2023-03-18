@@ -45,9 +45,8 @@ SDL_Surface * make_surface_text_horizontal(char *, SDL_Color, SDL_Color, int);
 char * get_param(char * param) {
     
     return (char *)EM_ASM_PTR({
-            const allParams = new URLSearchParams(window.location.search);
             let p = UTF8ToString($0);
-            let jsString = allParams.get(p);
+            let jsString = Module.URLParams.get(p);
             if (jsString == null) {
                 jsString = p == "o" ?  "h" : "";
             }
@@ -60,10 +59,12 @@ char * get_param(char * param) {
 #endif
 
 int main(int argc, char * argv[]) {
+#ifdef __EMSCRIPTEN__
+    EM_ASM(Module.URLParams = new URLSearchParams(window.location.search););
+#endif
+
     init_app();
     
-    SDL_Surface * screen = SDL_GetWindowSurface(app.window);
-        
 #ifdef __EMSCRIPTEN__
     change_text_to(get_param("t"), get_param("o"));
     emscripten_set_main_loop(process_event, 0, 1);
@@ -77,9 +78,6 @@ int main(int argc, char * argv[]) {
     SDL_Delay(1000);
 #endif
             
-    if (screen != NULL) {
-        SDL_FreeSurface(screen);
-    }
     printf("Have a nice day!");
 
     deinit_app(0);
@@ -227,28 +225,4 @@ void draw_text() {
     SDL_Rect rect = {0, 0, app.text->rect_width, app.text->rect_height};
     SDL_RenderCopy(app.renderer, app.text->texture, &rect, &rect);
     SDL_RenderPresent(app.renderer);
-}
-
-// TODO change to make text_horizontal
-void draw_text_horizontal(const char * text, SDL_Color color_fg, SDL_Color color_bg) {
-    int width, height;
-    TTF_SizeUTF8(app.font, text, &width, &height);
-
-    SDL_Rect text_rect = {0, 0, width, height};
-    SDL_Surface * surface = TTF_RenderUTF8_Shaded(
-            app.font,
-            text,
-            color_fg,
-            color_bg
-            );
-    SDL_Texture * texture = SDL_CreateTextureFromSurface(app.renderer, surface);
-
-    SDL_FreeSurface(surface);
-    /* SDL_RenderCopy(app.renderer, texture, &text_rect, &text_rect); */
-    SDL_RenderCopy(app.renderer, texture, &text_rect, &text_rect);
-    SDL_RenderPresent(app.renderer);
-}
-
-// TODO implement function
-void draw_text_vertical(const char * text, SDL_Color color_fg, SDL_Color color_bg) {
 }
