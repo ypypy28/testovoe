@@ -186,21 +186,49 @@ void change_text_to(char * msg, char * o) {
     int colon_width, colon_height;
     TTF_SizeUTF8(app.font, ":", &colon_width, &colon_height);
 
+
     int len_msg = strlen(msg);
     char prompt[len_msg+2];
     sprintf(prompt, "%s:", msg);
 
     int prompt_wrap_len = WINDOW_WIDTH/2 - colon_width;
 
-    SDL_Surface * surface = make_surface_text_horizontal(
+    int prompt_unwrapped_width, prompt_unwrapped_height;
+    TTF_SizeUTF8(app.font, prompt, &prompt_unwrapped_width, &prompt_unwrapped_height);
+
+    int prompt_last_line_width = prompt_unwrapped_width % prompt_wrap_len;
+
+    SDL_Surface * surface = SDL_GetWindowSurface(app.window);
+    SDL_Surface * prompt_surface = make_surface_text_horizontal(
             prompt,
             color_fg,
             color_bg,
             prompt_wrap_len
             );
+
+    SDL_BlitSurface(prompt_surface, NULL, surface, NULL);
+    
+    if (orient == horizontal) {
+        SDL_Surface * text_surface = make_surface_text_horizontal(
+                msg,
+                color_fg,
+                color_bg,
+                WINDOW_WIDTH-prompt_last_line_width
+                );
+        SDL_Rect dstrect = {
+            prompt_last_line_width,
+            prompt_surface->h - prompt_unwrapped_height,
+            text_surface->w,
+            text_surface->h
+        };
+        SDL_BlitSurface(text_surface, NULL, surface, &dstrect);
+        SDL_FreeSurface(text_surface);
+    }
+
     app.text->rect_width = surface->w;
     app.text->rect_height = surface->h;
     SDL_Texture * texture = SDL_CreateTextureFromSurface(app.renderer, surface);
+    SDL_FreeSurface(prompt_surface);
     SDL_FreeSurface(surface);
 
     if (app.text->texture != NULL) {
