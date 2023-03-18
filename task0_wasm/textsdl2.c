@@ -208,22 +208,37 @@ void change_text_to(char * msg, char * o) {
 
     SDL_BlitSurface(prompt_surface, NULL, surface, NULL);
     
+    char * text;
     if (orient == horizontal) {
-        SDL_Surface * text_surface = make_surface_text_horizontal(
-                msg,
-                color_fg,
-                color_bg,
-                WINDOW_WIDTH-prompt_last_line_width
-                );
-        SDL_Rect dstrect = {
-            prompt_last_line_width,
-            prompt_surface->h - prompt_unwrapped_height,
-            text_surface->w,
-            text_surface->h
-        };
-        SDL_BlitSurface(text_surface, NULL, surface, &dstrect);
-        SDL_FreeSurface(text_surface);
+        text = msg;
+    } else if (orient == vertical) {
+        char vertical_text[len_msg*2 + 1];
+        for (int i = 0; i < len_msg; ++i){
+            vertical_text[i*2] = msg[i];
+            vertical_text[i*2+1] = '\n';
+        }
+        text = vertical_text;
+    } else {
+        printf("ORIENTATION %s IS NOT IMPLEMENTD", o);
+        app.is_running = false;
+        deinit_app(1);
     }
+
+    SDL_Surface * text_surface = TTF_RenderUTF8_Shaded_Wrapped(
+            app.font,
+            text,
+            color_fg,
+            color_bg,
+            WINDOW_WIDTH-prompt_last_line_width
+            );
+    SDL_Rect dstrect = {
+        prompt_last_line_width,
+        prompt_surface->h - prompt_unwrapped_height,
+        text_surface->w,
+        text_surface->h
+    };
+    SDL_BlitSurface(text_surface, NULL, surface, &dstrect);
+    SDL_FreeSurface(text_surface);
 
     app.text->rect_width = surface->w;
     app.text->rect_height = surface->h;
