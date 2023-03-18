@@ -39,6 +39,7 @@ void change_text_to(char *, char*);
 void draw_text();
 void draw_text_horizontal(const char *, SDL_Color , SDL_Color);
 void draw_text_vertical(const char *, SDL_Color, SDL_Color);
+SDL_Surface * make_surface_text_horizontal(char *, SDL_Color, SDL_Color, int);
 
 #ifdef __EMSCRIPTEN__
 char * get_param(char * param) {
@@ -181,23 +182,26 @@ void change_text_to(char * msg, char * o) {
     app.text->msg = msg;
     app.text->d = orient;
 
-    int width, height;
-    TTF_SizeUTF8(app.font, msg, &width, &height);
-    
-    app.text->rect_width = width;
-    app.text->rect_height = height;
-
-    SDL_Rect text_rect = {0, 0, width, height};
-
     SDL_Color color_fg = { 200, 228, 142 };
     SDL_Color color_bg = { 0, 0, 0 };
 
-    SDL_Surface * surface = TTF_RenderUTF8_Shaded(
-            app.font,
-            msg,
+    int colon_width, colon_height;
+    TTF_SizeUTF8(app.font, ":", &colon_width, &colon_height);
+
+    int len_msg = strlen(msg);
+    char prompt[len_msg+2];
+    sprintf(prompt, "%s:", msg);
+
+    int prompt_wrap_len = WINDOW_WIDTH/2 - colon_width;
+
+    SDL_Surface * surface = make_surface_text_horizontal(
+            prompt,
             color_fg,
-            color_bg
+            color_bg,
+            prompt_wrap_len
             );
+    app.text->rect_width = surface->w;
+    app.text->rect_height = surface->h;
     SDL_Texture * texture = SDL_CreateTextureFromSurface(app.renderer, surface);
     SDL_FreeSurface(surface);
 
@@ -206,6 +210,17 @@ void change_text_to(char * msg, char * o) {
     }
     app.text->texture = texture;
 
+}
+
+SDL_Surface * make_surface_text_horizontal(char * text, SDL_Color fg, SDL_Color bg, int wrap_length) {
+    SDL_Surface * surface = TTF_RenderUTF8_Shaded_Wrapped(
+            app.font,
+            text,
+            fg,
+            bg,
+            wrap_length
+            );
+    return surface;
 }
 
 void draw_text() {
