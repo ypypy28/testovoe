@@ -7,6 +7,7 @@
 
 #define WINDOW_WIDTH 600
 #define WINDOW_HEIGHT 400
+#define FONT_SIZE 20
 
 
 typedef enum { false, true } bool;
@@ -91,7 +92,7 @@ void init_app() {
     }
 
     app.window = SDL_CreateWindow(
-            "Text writer",
+            "Draw",
             SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED,
             WINDOW_WIDTH,
@@ -129,7 +130,7 @@ void init_app() {
         deinit_app(1);
     }
 
-    app.font = TTF_OpenFont("resources/DejaVuSans.ttf", 28);
+    app.font = TTF_OpenFont("resources/DejaVuSans.ttf", FONT_SIZE);
 
     app.text = malloc(sizeof(TextArgs));
     app.text->rect_width = 0;
