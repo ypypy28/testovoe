@@ -198,7 +198,12 @@ void change_text_to(char * msg, char * o) {
 
     int prompt_last_line_width = prompt_unwrapped_width % prompt_wrap_len;
 
-    SDL_Surface * surface = SDL_GetWindowSurface(app.window);
+    SDL_Surface * surface = SDL_CreateRGBSurface(
+            0,
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            32,
+            0,0,0,0);
     SDL_Surface * prompt_surface = make_surface_text_horizontal(
             prompt,
             color_fg,
