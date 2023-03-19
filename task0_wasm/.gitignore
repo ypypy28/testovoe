@@ -1,0 +1,28 @@
+build/
+CMakeFiles/
+CMakeScripts/
+CMakeLists.txt.*
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# LIbraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects
+*.dll
+*.so
+*.so.*
+*.dylib
