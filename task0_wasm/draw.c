@@ -19,6 +19,8 @@ typedef struct  {
     int rect_width;
     int rect_height;
     SDL_Texture * texture;
+    SDL_Color color_fg;
+    SDL_Color color_bg;
 } TextArgs;
 
 typedef struct app {
@@ -36,12 +38,14 @@ static App app;
 void init_app();
 void deinit_app(int error);
 void process_event();
-void change_text_to(char *, char*);
+void change_text_to(char * msg, char * o); 
 void draw_text();
-size_t len_UTF8char(const char *);
-SDL_Surface * make_surface_text_horizontal(char *, SDL_Color, SDL_Color, int);
-void strcpy_with_newline_after_each_char(char *, const char *, size_t);
-int calc_last_line_width(const char *, int, int);
+size_t len_UTF8char(const char * c); 
+SDL_Surface * make_surface_text_horizontal(char * text, SDL_Color fg, SDL_Color bg, int wrap_length); 
+void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy); 
+size_t calc_bytes_in_wrapped_line(const char * src, int len_wrap); 
+int calc_last_line_width(const char * src, int len_unwrap, int len_wrap); 
+void merge_text_on_surface(const char * text, SDL_Surface * surface, int x, int y);
 
 #ifdef __EMSCRIPTEN__
 char * get_param(char * param) {
@@ -137,6 +141,10 @@ void init_app() {
     app.text->rect_width = 0;
     app.text->rect_height = 0;
     app.text->texture = NULL;
+    SDL_Color color_fg = { 200, 228, 142 };
+    SDL_Color color_bg = { 0, 0, 0 };
+    app.text->color_fg = color_fg;
+    app.text->color_bg = color_bg;
     change_text_to("Hello", "h");
 }
 
@@ -182,9 +190,6 @@ void change_text_to(char * msg, char * o) {
     app.text->msg = msg;
     app.text->d = orient;
 
-    SDL_Color color_fg = { 200, 228, 142 };
-    SDL_Color color_bg = { 0, 0, 0 };
-
     int colon_width, colon_height;
     TTF_SizeUTF8(app.font, ":", &colon_width, &colon_height);
 
@@ -192,7 +197,7 @@ void change_text_to(char * msg, char * o) {
     char prompt[len_msg+2];
     sprintf(prompt, "%s:", msg);
 
-    int prompt_wrap_len = WINDOW_WIDTH/2 - colon_width;
+    int prompt_wrap_len = WINDOW_WIDTH;
 
     int prompt_unwrapped_width, prompt_unwrapped_height;
     TTF_SizeUTF8(app.font, prompt, &prompt_unwrapped_width, &prompt_unwrapped_height);
@@ -213,39 +218,56 @@ void change_text_to(char * msg, char * o) {
             0,0,0,0);
     SDL_Surface * prompt_surface = make_surface_text_horizontal(
             prompt,
-            color_fg,
-            color_bg,
+            app.text->color_fg,
+            app.text->color_bg,
             prompt_wrap_len
             );
 
     SDL_BlitSurface(prompt_surface, NULL, surface, NULL);
     
-    char text[len_msg*2 + 1];
     if (orient == horizontal) {
-        strcpy(text, msg);
+        int line_width, chars_in_line;
+        TTF_MeasureUTF8(
+                app.font,
+                msg,
+                WINDOW_WIDTH-prompt_last_line_width,
+                &line_width,
+                &chars_in_line);
+        
+        int bytes_on_line_after_prompt = calc_bytes_in_wrapped_line(
+                msg,
+                WINDOW_WIDTH-prompt_last_line_width
+                );
+
+        char text_after_prompt[bytes_on_line_after_prompt+1];
+        strncpy(text_after_prompt, msg, bytes_on_line_after_prompt);
+        text_after_prompt[bytes_on_line_after_prompt] = '\0';
+        merge_text_on_surface(
+                text_after_prompt,
+                surface,
+                prompt_last_line_width,
+                prompt_surface->h - prompt_unwrapped_height);
+
+        msg += bytes_on_line_after_prompt;
+        merge_text_on_surface(
+                msg,
+                surface,
+                0,
+                prompt_surface->h);
+
     } else if (orient == vertical) {
+        char text[len_msg*2 + 1];
         strcpy_with_newline_after_each_char(text, msg, len_msg);
+        merge_text_on_surface(
+                text,
+                surface,
+                prompt_last_line_width,
+                prompt_surface->h - prompt_unwrapped_height);
     } else {
         printf("ORIENTATION %s IS NOT IMPLEMENTD", o);
         app.is_running = false;
         deinit_app(1);
     }
-
-    SDL_Surface * text_surface = TTF_RenderUTF8_Shaded_Wrapped(
-            app.font,
-            text,
-            color_fg,
-            color_bg,
-            WINDOW_WIDTH-prompt_last_line_width
-            );
-    SDL_Rect dstrect = {
-        prompt_last_line_width,
-        prompt_surface->h - prompt_unwrapped_height,
-        text_surface->w,
-        text_surface->h
-    };
-    SDL_BlitSurface(text_surface, NULL, surface, &dstrect);
-    SDL_FreeSurface(text_surface);
 
     app.text->rect_width = surface->w;
     app.text->rect_height = surface->h;
@@ -332,7 +354,7 @@ int calc_last_line_width(const char * src, int len_unwrap, int len_wrap) {
         last_line_width = line_width;
         bytes_after_space = -1;
         for (k = 0; k < chars_in_line; k++) {
-            len_ch = len_UTF8char(&last_line[0]);
+            len_ch = len_UTF8char(last_line);
             if (len_ch == 0) {
                 last_line++;
                 continue;
@@ -350,4 +372,51 @@ int calc_last_line_width(const char * src, int len_unwrap, int len_wrap) {
         TTF_MeasureUTF8(app.font, last_line, len_wrap, &line_width, &chars_in_line);
     }
     return last_line_width;
+}
+
+void merge_text_on_surface(const char * text, SDL_Surface * surface, int x, int y) {
+    SDL_Surface * text_surface = TTF_RenderUTF8_Shaded_Wrapped(
+            app.font,
+            text,
+            app.text->color_fg,
+            app.text->color_bg,
+            WINDOW_WIDTH-x
+            );
+    SDL_Rect dstrect = {
+        x,
+        y,
+        text_surface->w,
+        text_surface->h
+    };
+    SDL_BlitSurface(text_surface, NULL, surface, &dstrect);
+    SDL_FreeSurface(text_surface);
+}
+
+size_t calc_bytes_in_wrapped_line(const char * src, int len_wrap) {
+    size_t bytes_after_space = -1;
+    size_t bytes_in_line = 0;
+    size_t len_ch;
+    int line_width, chars_in_line;
+    TTF_MeasureUTF8(app.font, src, len_wrap, &line_width, &chars_in_line);
+
+    for (int k = 0; k < chars_in_line; k++) {
+        len_ch = len_UTF8char(src);
+        if (len_ch == 0) {
+            src++;
+            bytes_in_line++;
+            continue;
+        }
+        if (src[0] == ' ') {
+            bytes_after_space = 0;
+        } else if (bytes_after_space != -1) {
+            bytes_after_space += len_ch;
+        }
+        src += len_ch;
+        bytes_in_line += len_ch;
+    }
+    if (src[0] != ' ' && src[0] != '\0' && bytes_after_space != -1) {
+        src -= bytes_after_space;
+        bytes_in_line -= bytes_after_space;
+    }
+    return bytes_in_line;
 }
