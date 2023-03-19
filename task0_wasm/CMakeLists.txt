@@ -16,7 +16,7 @@ else()
     find_package(SDL2_ttf REQUIRED)
 endif()
 
-add_executable(${PROJECT_NAME} textsdl2.c)
+add_executable(${PROJECT_NAME} draw.c)
 
 if(EMSCRIPTEN)
     set_target_properties(${PROJECT_NAME}
