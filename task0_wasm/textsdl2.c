@@ -38,9 +38,9 @@ void deinit_app(int error);
 void process_event();
 void change_text_to(char *, char*);
 void draw_text();
-void draw_text_horizontal(const char *, SDL_Color , SDL_Color);
-void draw_text_vertical(const char *, SDL_Color, SDL_Color);
+size_t len_UTF8char(const char *);
 SDL_Surface * make_surface_text_horizontal(char *, SDL_Color, SDL_Color, int);
+void strcpy_with_newline_after_each_char(char *, const char *, size_t);
 
 #ifdef __EMSCRIPTEN__
 char * get_param(char * param) {
@@ -187,7 +187,6 @@ void change_text_to(char * msg, char * o) {
     int colon_width, colon_height;
     TTF_SizeUTF8(app.font, ":", &colon_width, &colon_height);
 
-
     int len_msg = strlen(msg);
     char prompt[len_msg+2];
     sprintf(prompt, "%s:", msg);
@@ -214,16 +213,11 @@ void change_text_to(char * msg, char * o) {
 
     SDL_BlitSurface(prompt_surface, NULL, surface, NULL);
     
-    char * text;
+    char text[len_msg*2 + 1];
     if (orient == horizontal) {
-        text = msg;
+        strcpy(text, msg);
     } else if (orient == vertical) {
-        char vertical_text[len_msg*2 + 1];
-        for (int i = 0; i < len_msg; ++i){
-            vertical_text[i*2] = msg[i];
-            vertical_text[i*2+1] = '\n';
-        }
-        text = vertical_text;
+        strcpy_with_newline_after_each_char(text, msg, len_msg);
     } else {
         printf("ORIENTATION %s IS NOT IMPLEMENTD", o);
         app.is_running = false;
@@ -274,4 +268,48 @@ void draw_text() {
     SDL_Rect rect = {0, 0, app.text->rect_width, app.text->rect_height};
     SDL_RenderCopy(app.renderer, app.text->texture, &rect, &rect);
     SDL_RenderPresent(app.renderer);
+}
+
+size_t len_UTF8char(const char * c) {
+    if (c == NULL)
+        return 0;
+
+    if (((c[0] & 0xF8) == 0xF0) 
+        && ((c[1] & 0xC0) == 0x80)
+        && ((c[2] & 0xC0) == 0x80)
+        && ((c[3] & 0xC0) == 0x80)) {
+                return 4;
+    } else if (((c[0] & 0xF0) == 0xE0) 
+            && ((c[1] & 0xC0) == 0x80)
+            && ((c[2] & 0xC0) == 0x80)) {
+                return 3;
+    } else if (((c[0] & 0xE0) == 0xC0)
+            && ((c[1] & 0xC0) == 0x80)) {
+                return 2;
+    } else if ((c[0] & 0x80) == 0x00) {
+        return 1;
+    }
+    return 0;
+}
+
+void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy) {
+    char vertical_text[len_to_copy*2 + 1];
+    size_t i = 0;
+    size_t j = 0;
+    size_t k = 0;
+    while (i < len_to_copy) {
+        size_t len_char = len_UTF8char(&src[i]);
+        if (len_char == 0) {
+            i++;
+            continue;
+        }
+        for (k = 0; k < len_char; k++, j++) {
+            vertical_text[j] = src[i+k];
+        }
+        vertical_text[j] = '\n';
+        j++;
+        i += len_char;
+    }
+    vertical_text[j] = '\0';
+    strcpy(dst, vertical_text);
 }
