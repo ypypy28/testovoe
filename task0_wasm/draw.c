@@ -41,6 +41,7 @@ void draw_text();
 size_t len_UTF8char(const char *);
 SDL_Surface * make_surface_text_horizontal(char *, SDL_Color, SDL_Color, int);
 void strcpy_with_newline_after_each_char(char *, const char *, size_t);
+int calc_last_line_width(const char *, int, int);
 
 #ifdef __EMSCRIPTEN__
 char * get_param(char * param) {
@@ -196,7 +197,13 @@ void change_text_to(char * msg, char * o) {
     int prompt_unwrapped_width, prompt_unwrapped_height;
     TTF_SizeUTF8(app.font, prompt, &prompt_unwrapped_width, &prompt_unwrapped_height);
 
-    int prompt_last_line_width = prompt_unwrapped_width % prompt_wrap_len;
+    int prompt_last_line_width = prompt_unwrapped_width;
+    if (prompt_wrap_len < prompt_unwrapped_width) {
+        prompt_last_line_width = calc_last_line_width(
+                prompt,
+                prompt_unwrapped_width,
+                prompt_wrap_len);
+    }
 
     SDL_Surface * surface = SDL_CreateRGBSurface(
             0,
@@ -312,4 +319,35 @@ void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t le
     }
     vertical_text[j] = '\0';
     strcpy(dst, vertical_text);
+}
+
+int calc_last_line_width(const char * src, int len_unwrap, int len_wrap) {
+    int last_line_width = len_unwrap;
+    char * last_line = (char *) src;
+
+    int line_width = len_unwrap;
+    int k, len_ch, bytes_after_space;
+    int chars_in_line = 0;
+    while (line_width != 0) {
+        last_line_width = line_width;
+        bytes_after_space = -1;
+        for (k = 0; k < chars_in_line; k++) {
+            len_ch = len_UTF8char(&last_line[0]);
+            if (len_ch == 0) {
+                last_line++;
+                continue;
+            }
+            if (last_line[0] == ' ') {
+                bytes_after_space = 0;
+            } else if (bytes_after_space != -1) {
+                bytes_after_space += len_ch;
+            }
+            last_line += len_ch;
+        }
+        if (last_line[0] != ' ' && last_line[0] != '\0' && bytes_after_space != -1) {
+            last_line -= bytes_after_space;
+        }
+        TTF_MeasureUTF8(app.font, last_line, len_wrap, &line_width, &chars_in_line);
+    }
+    return last_line_width;
 }
