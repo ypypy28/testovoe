@@ -10,4 +10,5 @@ RUN emcc draw.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources -o build/pu
 FROM python:3.11-alpine
 WORKDIR /var/www
 COPY --from=builder /src/build/public .
+EXPOSE 8000
 CMD ["python3", "-m", "http.server"]
