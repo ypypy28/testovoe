@@ -1,7 +1,8 @@
 FROM emscripten/emsdk:3.1.34 AS builder
 RUN apt update \
-    && apt upgrade -y 
-RUN emsdk install 3.1.34
+    && apt upgrade -y  \
+    && emsdk activate 3.1.34 \
+    && embuilder build sdl2 sdl2_ttf
 WORKDIR /src
 RUN mkdir -p build/public
 COPY . ./
