@@ -447,19 +447,18 @@ void put_vertical_text_on_surface(const char * src, SDL_Surface * surface, int s
     int text_width, text_height, j; 
     char text[len_src+1];
     char vertical_text[vertical_lines*2+1];
-    size_t printed_bytes = 0;
-    for (int i = 0; i < len_src; i++) {
+    for (size_t processed_bytes = 0; processed_bytes < len_src; ) {
         if (start_x >= WINDOW_WIDTH || *msg == '\0') {
             break;
         }
         // delete ' ' from start of a column
         while (msg[0] == ' ') {
             msg++;
-            printed_bytes++;
+            processed_bytes++;
         }
         bytes_to_cpy = 0;
         bytes_after_space = -1;
-        for (j = 0; j < vertical_lines && printed_bytes + bytes_to_cpy <= len_src; j++) {
+        for (j = 0; j < vertical_lines && processed_bytes + bytes_to_cpy <= len_src; j++) {
             len_ch = len_UTF8char(&msg[bytes_to_cpy]);
             if (msg[bytes_to_cpy] == ' ') {
                 bytes_after_space = 0;
@@ -468,13 +467,17 @@ void put_vertical_text_on_surface(const char * src, SDL_Surface * surface, int s
             }
             bytes_to_cpy += len_ch;
         }
-        if (bytes_after_space > 0) {
+        
+        // if we stopped in the middle of the word
+        // and there was a space in the current column,
+        // we should copy only until that space
+        if (bytes_after_space > 0 && msg[bytes_to_cpy] != ' ' && j == vertical_lines) {
             bytes_to_cpy -= bytes_after_space;
         }
         strncpy(text, msg, bytes_to_cpy);
         text[bytes_to_cpy] = '\0';
         msg += bytes_to_cpy;
-        printed_bytes += bytes_to_cpy;
+        processed_bytes += bytes_to_cpy;
         int n_bytes = strcpy_with_newline_after_each_char(vertical_text, text, bytes_to_cpy);
         vertical_text[n_bytes] = '\0';
         put_horizontal_text_on_surface(
