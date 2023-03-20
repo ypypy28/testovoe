@@ -1,0 +1,32 @@
+# remove cmake's prebuilt files and build directory
+clean:
+    rm -rf build/ CMakeFiles/ CMakeCache.txt cmake_install.cmake Makefile
+
+# prepare to build wasm
+wasm: clean
+    emcmake cmake .
+
+# prepare to build binary
+bin: clean
+    cmake .
+
+# build prepared project
+build:
+    cmake --build .
+
+# build docker image
+build-image:
+    sudo docker build . -t task0
+
+# run prebuilt docker image
+run-image:
+    sudo docker run -p 8000:8000 task0
+
+# run binary
+run-bin:
+    ./build/bin/draw
+
+set positional-arguments
+# run wasm project
+run-html *args='?t=Hello World&o=v':
+    emrun ./build/public/draw.html"$@"
