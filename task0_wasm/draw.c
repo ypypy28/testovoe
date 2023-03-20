@@ -42,7 +42,7 @@ void change_text_to(char * msg, char * o);
 void draw_text();
 size_t len_UTF8char(const char * c); 
 SDL_Surface * make_surface_text_horizontal(char * text, SDL_Color fg, SDL_Color bg, int wrap_length); 
-void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy); 
+size_t strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy); 
 size_t calc_bytes_in_wrapped_line(const char * src, int len_wrap); 
 int calc_last_line_width(const char * src, int len_unwrap, int len_wrap); 
 void merge_text_on_surface(const char * text, SDL_Surface * surface, int x, int y);
@@ -256,13 +256,51 @@ void change_text_to(char * msg, char * o) {
                 prompt_surface->h);
 
     } else if (orient == vertical) {
-        char text[len_msg*2 + 1];
-        strcpy_with_newline_after_each_char(text, msg, len_msg);
-        merge_text_on_surface(
-                text,
-                surface,
-                prompt_last_line_width,
-                prompt_surface->h - prompt_unwrapped_height);
+        size_t vertical_lines = (WINDOW_HEIGHT - (prompt_surface->h) + prompt_unwrapped_height) / prompt_unwrapped_height;
+        size_t len_ch, bytes_to_cpy;
+        int bytes_after_space;
+        int x = prompt_last_line_width;
+        int y = prompt_surface->h - prompt_unwrapped_height;
+        int text_width, text_height, j; 
+        char text[len_msg+1];
+        char vertical_text[vertical_lines*2+1];
+        size_t printed_bytes = 0;
+        for (int i = 0; i < len_msg; i++) {
+            if (x >= WINDOW_WIDTH || *msg == '\0') {
+                break;
+            }
+            // delete ' ' from start of a column
+            while (msg[0] == ' ') {
+                msg++;
+                printed_bytes++;
+            }
+            bytes_to_cpy = 0;
+            bytes_after_space = -1;
+            for (j = 0; j < vertical_lines && printed_bytes + bytes_to_cpy <= len_msg; j++) {
+                len_ch = len_UTF8char(&msg[bytes_to_cpy]);
+                if (msg[bytes_to_cpy] == ' ') {
+                    bytes_after_space = 0;
+                } else if (bytes_after_space != -1) {
+                    bytes_after_space += len_ch; 
+                }
+                bytes_to_cpy += len_ch;
+            }
+            if (bytes_after_space > 0) {
+                bytes_to_cpy -= bytes_after_space;
+            }
+            strncpy(text, msg, bytes_to_cpy);
+            text[bytes_to_cpy] = '\0';
+            msg += bytes_to_cpy;
+            printed_bytes += bytes_to_cpy;
+            int n_bytes = strcpy_with_newline_after_each_char(vertical_text, text, bytes_to_cpy);
+            vertical_text[n_bytes] = '\0';
+            merge_text_on_surface(
+                    vertical_text,
+                    surface,
+                    x,
+                    prompt_surface->h - prompt_unwrapped_height);
+            x += FONT_SIZE;
+        }
     } else {
         printf("ORIENTATION %s IS NOT IMPLEMENTD", o);
         app.is_running = false;
@@ -321,7 +359,7 @@ size_t len_UTF8char(const char * c) {
     return 0;
 }
 
-void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy) {
+size_t strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy) {
     char vertical_text[len_to_copy*2 + 1];
     size_t i = 0;
     size_t j = 0;
@@ -329,6 +367,7 @@ void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t le
     while (i < len_to_copy) {
         size_t len_char = len_UTF8char(&src[i]);
         if (len_char == 0) {
+            printf("BAD CHAR %c\n", src[i]);
             i++;
             continue;
         }
@@ -341,6 +380,7 @@ void strcpy_with_newline_after_each_char(char * dst, const char * src, size_t le
     }
     vertical_text[j] = '\0';
     strcpy(dst, vertical_text);
+    return j;
 }
 
 int calc_last_line_width(const char * src, int len_unwrap, int len_wrap) {
@@ -348,7 +388,8 @@ int calc_last_line_width(const char * src, int len_unwrap, int len_wrap) {
     char * last_line = (char *) src;
 
     int line_width = len_unwrap;
-    int k, len_ch, bytes_after_space;
+    int k;
+    size_t len_ch, bytes_after_space;
     int chars_in_line = 0;
     while (line_width != 0) {
         last_line_width = line_width;
