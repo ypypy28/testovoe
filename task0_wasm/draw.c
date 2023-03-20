@@ -45,7 +45,9 @@ SDL_Surface * make_surface_text_horizontal(char * text, SDL_Color fg, SDL_Color 
 size_t strcpy_with_newline_after_each_char(char * dst, const char * src, size_t len_to_copy); 
 size_t calc_bytes_in_wrapped_line(const char * src, int len_wrap); 
 int calc_last_line_width(const char * src, int len_unwrap, int len_wrap); 
-void merge_text_on_surface(const char * text, SDL_Surface * surface, int x, int y);
+void put_horizontal_text_on_surface(const char * text, SDL_Surface * surface, int x, int y);
+void put_next_horizontal_text_on_surface(const char * src, SDL_Surface * surface, int start_x, int start_y, int continue_x, int continue_y );
+void put_vertical_text_on_surface(const char * src, SDL_Surface * surface, int start_x, int start_y, int line_height, size_t len_src);
 
 #ifdef __EMSCRIPTEN__
 char * get_param(char * param) {
@@ -226,81 +228,21 @@ void change_text_to(char * msg, char * o) {
     SDL_BlitSurface(prompt_surface, NULL, surface, NULL);
     
     if (orient == horizontal) {
-        int line_width, chars_in_line;
-        TTF_MeasureUTF8(
-                app.font,
+        put_next_horizontal_text_on_surface(
                 msg,
-                WINDOW_WIDTH-prompt_last_line_width,
-                &line_width,
-                &chars_in_line);
-        
-        int bytes_on_line_after_prompt = calc_bytes_in_wrapped_line(
-                msg,
-                WINDOW_WIDTH-prompt_last_line_width
-                );
-
-        char text_after_prompt[bytes_on_line_after_prompt+1];
-        strncpy(text_after_prompt, msg, bytes_on_line_after_prompt);
-        text_after_prompt[bytes_on_line_after_prompt] = '\0';
-        merge_text_on_surface(
-                text_after_prompt,
                 surface,
                 prompt_last_line_width,
-                prompt_surface->h - prompt_unwrapped_height);
-
-        msg += bytes_on_line_after_prompt;
-        merge_text_on_surface(
-                msg,
-                surface,
+                prompt_surface->h - prompt_unwrapped_height,
                 0,
                 prompt_surface->h);
-
     } else if (orient == vertical) {
-        size_t vertical_lines = (WINDOW_HEIGHT - (prompt_surface->h) + prompt_unwrapped_height) / prompt_unwrapped_height;
-        size_t len_ch, bytes_to_cpy;
-        int bytes_after_space;
-        int x = prompt_last_line_width;
-        int y = prompt_surface->h - prompt_unwrapped_height;
-        int text_width, text_height, j; 
-        char text[len_msg+1];
-        char vertical_text[vertical_lines*2+1];
-        size_t printed_bytes = 0;
-        for (int i = 0; i < len_msg; i++) {
-            if (x >= WINDOW_WIDTH || *msg == '\0') {
-                break;
-            }
-            // delete ' ' from start of a column
-            while (msg[0] == ' ') {
-                msg++;
-                printed_bytes++;
-            }
-            bytes_to_cpy = 0;
-            bytes_after_space = -1;
-            for (j = 0; j < vertical_lines && printed_bytes + bytes_to_cpy <= len_msg; j++) {
-                len_ch = len_UTF8char(&msg[bytes_to_cpy]);
-                if (msg[bytes_to_cpy] == ' ') {
-                    bytes_after_space = 0;
-                } else if (bytes_after_space != -1) {
-                    bytes_after_space += len_ch; 
-                }
-                bytes_to_cpy += len_ch;
-            }
-            if (bytes_after_space > 0) {
-                bytes_to_cpy -= bytes_after_space;
-            }
-            strncpy(text, msg, bytes_to_cpy);
-            text[bytes_to_cpy] = '\0';
-            msg += bytes_to_cpy;
-            printed_bytes += bytes_to_cpy;
-            int n_bytes = strcpy_with_newline_after_each_char(vertical_text, text, bytes_to_cpy);
-            vertical_text[n_bytes] = '\0';
-            merge_text_on_surface(
-                    vertical_text,
-                    surface,
-                    x,
-                    prompt_surface->h - prompt_unwrapped_height);
-            x += FONT_SIZE;
-        }
+        put_vertical_text_on_surface(
+                msg,
+                surface,
+                prompt_last_line_width,
+                prompt_surface->h - prompt_unwrapped_height,
+                prompt_unwrapped_height,
+                len_msg);
     } else {
         printf("ORIENTATION %s IS NOT IMPLEMENTD", o);
         app.is_running = false;
@@ -415,7 +357,8 @@ int calc_last_line_width(const char * src, int len_unwrap, int len_wrap) {
     return last_line_width;
 }
 
-void merge_text_on_surface(const char * text, SDL_Surface * surface, int x, int y) {
+void put_horizontal_text_on_surface(const char * text, SDL_Surface * surface, int x, int y) {
+    if (*text == '\0') return;
     SDL_Surface * text_surface = TTF_RenderUTF8_Shaded_Wrapped(
             app.font,
             text,
@@ -460,4 +403,85 @@ size_t calc_bytes_in_wrapped_line(const char * src, int len_wrap) {
         bytes_in_line -= bytes_after_space;
     }
     return bytes_in_line;
+}
+
+void put_next_horizontal_text_on_surface(const char * src, SDL_Surface * surface, int start_x, int start_y, int continue_x, int continue_y ) {
+    if (*src == '\0') return;
+    char * text = (char *)src;
+    int line_width, chars_in_line;
+    TTF_MeasureUTF8(
+            app.font,
+            text,
+            WINDOW_WIDTH - start_x,
+            &line_width,
+            &chars_in_line);
+    
+    int bytes_on_line_after_prompt = calc_bytes_in_wrapped_line(
+            text,
+            WINDOW_WIDTH - start_x
+            );
+
+    char text_after_prompt[bytes_on_line_after_prompt+1];
+    strncpy(text_after_prompt, text, bytes_on_line_after_prompt);
+    text_after_prompt[bytes_on_line_after_prompt] = '\0';
+    put_horizontal_text_on_surface(
+            text_after_prompt,
+            surface,
+            start_x,
+            start_y);
+
+    text += bytes_on_line_after_prompt;
+    put_horizontal_text_on_surface(
+            text,
+            surface,
+            continue_x,
+            continue_y);
+}
+
+void put_vertical_text_on_surface(const char * src, SDL_Surface * surface, int start_x, int start_y, int line_height, size_t len_src) {
+    if (*src == '\0') return;
+    char * msg = (char *) src;
+    size_t vertical_lines = (WINDOW_HEIGHT - start_y) / line_height;
+    size_t len_ch, bytes_to_cpy;
+    int bytes_after_space;
+    int text_width, text_height, j; 
+    char text[len_src+1];
+    char vertical_text[vertical_lines*2+1];
+    size_t printed_bytes = 0;
+    for (int i = 0; i < len_src; i++) {
+        if (start_x >= WINDOW_WIDTH || *msg == '\0') {
+            break;
+        }
+        // delete ' ' from start of a column
+        while (msg[0] == ' ') {
+            msg++;
+            printed_bytes++;
+        }
+        bytes_to_cpy = 0;
+        bytes_after_space = -1;
+        for (j = 0; j < vertical_lines && printed_bytes + bytes_to_cpy <= len_src; j++) {
+            len_ch = len_UTF8char(&msg[bytes_to_cpy]);
+            if (msg[bytes_to_cpy] == ' ') {
+                bytes_after_space = 0;
+            } else if (bytes_after_space != -1) {
+                bytes_after_space += len_ch; 
+            }
+            bytes_to_cpy += len_ch;
+        }
+        if (bytes_after_space > 0) {
+            bytes_to_cpy -= bytes_after_space;
+        }
+        strncpy(text, msg, bytes_to_cpy);
+        text[bytes_to_cpy] = '\0';
+        msg += bytes_to_cpy;
+        printed_bytes += bytes_to_cpy;
+        int n_bytes = strcpy_with_newline_after_each_char(vertical_text, text, bytes_to_cpy);
+        vertical_text[n_bytes] = '\0';
+        put_horizontal_text_on_surface(
+                vertical_text,
+                surface,
+                start_x,
+                start_y);
+        start_x += FONT_SIZE;
+    }
 }
