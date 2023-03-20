@@ -20,7 +20,7 @@ build-image:
 
 # run prebuilt docker image
 run-image:
-    sudo docker run -p 8000:8000 task0
+    sudo docker run --rm -p 8000:8000 task0
 
 # run binary
 run-bin:
