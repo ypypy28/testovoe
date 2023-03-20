@@ -20,7 +20,7 @@ add_executable(${PROJECT_NAME} draw.c)
 
 if(EMSCRIPTEN)
     set_target_properties(${PROJECT_NAME}
-        PROPERTIES LINK_FLAGS "-sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources")
+        PROPERTIES LINK_FLAGS "-sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources --shell-file shell.html")
 else()
     target_link_libraries(${PROJECT_NAME}  ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
 endif()
