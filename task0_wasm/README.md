@@ -25,11 +25,32 @@
 docker build . -t task0
 docker run --rm -t task0 -p 8000:8000 task0
 ```
-Далее в бразурее открывайте ссылку http://localhost:8000/draw.html?o=h&t=Текст
+Далее в браузере открывайте ссылку http://localhost:8000/draw.html?o=h&t=Текст
 
 ### Без контейнера
-Чтобы сбилдить локально, понадобится `emsdk`, `cmake` и библиотеки `SDL2` и `SDL2_TTF`. В вашей операционной системе их установка может отличаться. Для Debian-based, например:
+- Чтобы скомпилировать локально в wasm, минимально достаточно иметь установленный [emsdk](https://github.com/emscripten-core/emsdk):
+```bash
+emcc draw.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources --shell-file shell.html -o build/public/draw.html
+```
+- При наличии `cmake`, скомпилировать wasm можно следующими командами
+```bash
+emcmake cmake .
+cmake --build .
+```
+
+Готовые файлы будут располагаться в папке `./build/public`. Запустить проще всего:
+```bash
+emrun build/public
+```
+
+- Проект также может быть скомпилирован в исполняемый нативный код, для этого понадобится предустановить библиотеки `SDL2` и `SDL2_TTF`. В вашей операционной системе их установка может отличаться. Для Debian-based, например:
 ```bash
 sudo apt update ; sudo apt install cmake libsdl2-dev libsdl2-ttf-dev
-emrun build/public
+cmake .
+cmake --build .
+```
+
+- Однострочный рецепт just скомпилирует и запустит просмотр wasm-проекта с переданными в кавычках параметрами:
+```bash
+just wasm build run-html "?t=Привет, мир&o=v"
 ```
