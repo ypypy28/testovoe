@@ -23,7 +23,7 @@
 Проще всего, понадобится только установленный Docker.
 ```bash
 docker build . -t task0
-docker run --rm -t task0 -p 8000:8000 task0
+docker run --rm -p 8000:8000 task0
 ```
 Далее в браузере открывайте ссылку http://localhost:8000/draw.html?o=h&t=Текст
 
