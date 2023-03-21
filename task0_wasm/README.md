@@ -53,6 +53,7 @@ sudo apt update ; sudo apt install cmake libsdl2-dev libsdl2-ttf-dev
 cmake .
 cmake --build .
 ```
+Готоый к запуску исполняемый файл будет находиться в папке `./build/bin/`.
 
 - Однострочный рецепт [just](https://github.com/casey/just) скомпилирует и запустит просмотр wasm-проекта с переданными в кавычках параметрами:
 ```bash
