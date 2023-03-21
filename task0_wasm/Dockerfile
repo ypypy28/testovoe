@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:3.1.34 AS builder
+FROM docker.io/emscripten/emsdk:3.1.34 AS builder
 RUN apt update \
     && apt upgrade -y  \
     && emsdk activate 3.1.34 \
@@ -8,7 +8,7 @@ RUN mkdir -p build/public
 COPY . ./
 RUN emcc draw.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources --shell-file shell.html -o build/public/draw.html
 
-FROM python:3.11-alpine
+FROM docker.io/python:3.11-alpine
 WORKDIR /var/www
 COPY --from=builder /src/build/public .
 EXPOSE 8000
