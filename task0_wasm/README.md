@@ -30,7 +30,11 @@ docker run --rm -t task0 -p 8000:8000 task0
 ### Без контейнера
 - Чтобы скомпилировать локально в wasm, минимально достаточно иметь установленный [emsdk](https://github.com/emscripten-core/emsdk):
 ```bash
-emcc draw.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources --shell-file shell.html -o build/public/draw.html
+emcc draw.c -sUSE_SDL=2 -sUSE_SDL_TTF=2 --preload-file resources --shell-file shell.html -o draw.html
+```
+Готовые файлы будут в корневом каталоге проекта, запустить можно:
+```bash
+emrun draw.html
 ```
 - При наличии `cmake`, скомпилировать wasm можно следующими командами
 ```bash
@@ -40,7 +44,7 @@ cmake --build .
 
 Готовые файлы будут располагаться в папке `./build/public`. Запустить проще всего:
 ```bash
-emrun build/public
+emrun build/public/draw.html
 ```
 
 - Проект также может быть скомпилирован в исполняемый нативный код, для этого понадобится предустановить библиотеки `SDL2` и `SDL2_TTF`. В вашей операционной системе их установка может отличаться. Для Debian-based, например:
